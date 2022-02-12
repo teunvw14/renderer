@@ -28,8 +28,8 @@ use world::World;
 
 
 fn main() -> Result<(), Error> {
-    let resolution_w: u32 = 800;
-    let resolution_h: u32 = 600;
+    let resolution_w: u32 = 1920;
+    let resolution_h: u32 = 1440;
 
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
