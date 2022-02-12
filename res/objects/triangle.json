@@ -1,0 +1,1 @@
+{"pos":{"x":0.0,"y":-0.5,"z":-3.0},"vertices":[{"x":0.0,"y":1.0,"z":0.0},{"x":0.0,"y":0.0,"z":0.0},{"x":1.0,"y":0.0,"z":0.0}],"faces":[[0,1,2]],"material":{"ambient_constant":{"r":0,"g":0,"b":255,"a":255},"diffuse_constant":50.0,"specular_constant":20.0,"shine":7.0}}
