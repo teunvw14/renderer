@@ -1,6 +1,8 @@
-use std::ops::{Add, AddAssign, Mul, Sub};
+use std::{ops::{Add, AddAssign, Mul, Sub}, f32::consts::PI};
 
 use serde::{Serialize, Deserialize};
+
+use crate::util::SphericalCoordinates;
 
 pub struct Vec2 {
     pub x: f32,
@@ -11,7 +13,7 @@ pub fn vec2(x: f32, y: f32) -> Vec2 {
     Vec2 { x, y }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -65,18 +67,27 @@ impl AddAssign for Vec3 {
     }
 }
 
+impl From<SphericalCoordinates> for Vec3 {
+    fn from(sphere: SphericalCoordinates) -> Self {
+        let x = sphere.rad * (sphere.phi).cos() * (sphere.theta).sin();
+        let y = sphere.rad * (sphere.phi).sin() * (sphere.theta).sin();
+        let z = sphere.rad * (sphere.theta).cos();
+        vec3(x, y, z)
+    }
+}
+
 // Custom implementations
 impl Vec3 {
-    pub fn length(&self) -> f32 {
+    pub fn len(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
     pub fn normalize(&mut self) {
-        *self = *self * (1.0 / self.length())
+        *self = *self * (1.0 / self.len())
     }
 
     pub fn normalized(&self) -> Vec3 {
-        *self * (1.0 / self.length())
+        *self * (1.0 / self.len())
     }
 
     pub fn cross_product(&self, other: Self) -> Vec3 {
@@ -86,4 +97,16 @@ impl Vec3 {
             self.x * other.y - self.y * other.x,
         )
     }
+}
+
+#[test]
+fn test_sphere_to_vec_conversion() {
+    let v = vec3(1.0, 1.0, 0.0);
+    let s = SphericalCoordinates {
+        rad: (2f32).sqrt(), 
+        theta: PI / 2.0,
+        phi: PI / 4.0,
+    };
+    let epsilon = 0.000001f32;
+    assert!((v - s.into()).len() < epsilon);
 }

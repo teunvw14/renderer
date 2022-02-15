@@ -77,8 +77,8 @@ impl Renderer {
             match (closest_ball, closest_triangle) {
                 (Some((_, pos_hit_ball)), Some((_, _, pos_hit_triangle))) => {
                     hit = true;
-                    let distance_ball = (camera.pos - pos_hit_ball).length();
-                    let distance_triangle = (camera.pos - pos_hit_triangle).length();
+                    let distance_ball = (camera.pos - pos_hit_ball).len();
+                    let distance_triangle = (camera.pos - pos_hit_triangle).len();
                     ball_closer = distance_ball <= distance_triangle;
                 }
                 (Some(_), None) => ball_closer = true,
@@ -120,8 +120,8 @@ impl Renderer {
     }
 
     fn calculate_pixel_ray(camera: &Camera, i: usize) -> Vec3 {
-            let alpha = (i % camera.res.w as usize) as f32 / camera.res.w as f32;
-            let beta = (i / camera.res.w as usize) as f32 / camera.res.h as f32;
+            let alpha = (i % camera.resolution.w as usize) as f32 / camera.resolution.w as f32;
+            let beta = (i / camera.resolution.w as usize) as f32 / camera.resolution.h as f32;
 
             let hi = camera.image_plane.top_left * (1.0 - alpha) +
                 camera.image_plane.top_right * alpha;
@@ -234,11 +234,11 @@ impl Renderer {
 
             // Apply the quadratic equation:
             let a: f32 = {
-                let dir_len = direction.length();
+                let dir_len = direction.len();
                 dir_len * dir_len
             };
             let b: f32 = center_adj * direction * 2.0;
-            let c: f32 = center_adj.length() * center_adj.length() - ball.rad * ball.rad;
+            let c: f32 = center_adj.len() * center_adj.len() - ball.rad * ball.rad;
             let d: f32 = b * b - 4.0 * a * c;
             match d {
                 x if x < 0.0 => {
@@ -290,11 +290,11 @@ impl Renderer {
 
                 // Apply the quadratic equation:
                 let a: f32 = {
-                    let dir_len = direction.length();
+                    let dir_len = direction.len();
                     dir_len * dir_len
                 };
                 let b: f32 = center_adj * direction * 2.0;
-                let c: f32 = center_adj.length() * center_adj.length() - ball.rad * ball.rad;
+                let c: f32 = center_adj.len() * center_adj.len() - ball.rad * ball.rad;
                 let d: f32 = b * b - 4.0 * a * c;
                 match d {
                     x if x < 0.0 => {
@@ -347,7 +347,7 @@ impl Renderer {
                 let p_to_light_normal = (light.pos - pos).normalized();
                 let dot_product = p_to_light_normal * surface_normal;
                 if dot_product >= 0.0 {
-                    let distance_to_light = (light.pos - pos).length();
+                    let distance_to_light = (light.pos - pos).len();
                     let d_sq = distance_to_light * distance_to_light;
                     // Diffuse:
                     diffuse_r += (dot_product

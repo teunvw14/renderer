@@ -26,10 +26,11 @@ use util::{Resolution, print_frame_time };
 use vector::*;
 use world::World;
 
+#[macro_use] extern crate quick_error;
 
 fn main() -> Result<(), Error> {
-    let resolution_w: u32 = 1920;
-    let resolution_h: u32 = 1440;
+    let resolution_w: u32 = 800;
+    let resolution_h: u32 = 600;
 
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
@@ -89,26 +90,22 @@ fn main() -> Result<(), Error> {
     };
     world.lights.push(light2);
 
-    let mut camera = Camera {
-        pos: vec3(0.0, 0.0, 1.0),
-        res: Resolution {
-            w: resolution_w,
-            h: resolution_h,
-        },
-        image_plane: ImagePlane {
-            top_left: vec3(-1.0, 0.75, 0.0),
-            top_right: vec3(1.0, 0.75, 0.0),
-            bottom_right: vec3(1.0, -0.75, 0.0),
-            bottom_left: vec3(-1.0, -0.75, 0.0),
-        },
-    };
+    let mut camera = Camera::new(
+        vec3(0.0, 0.0, 5.0),
+        vec3(0.0, 0.0, -1.0),
+        90.0,
+        Resolution {w: resolution_w, h: resolution_h},
+    );
+    camera.look_at(ball1.pos);
 
     let mut renderer: Renderer = Renderer { grayscale: false, multithreading_method: MultithreadingMethod::Rayon };
 
     let app_start = Instant::now();
     let mut frame_time_ms = 0.0;
     let mut multithreading = false;
+    let mut click_count: u8 = 0;
     event_loop.run(move |event, _, control_flow| {
+
         let frame_start = Instant::now();
 
         // Draw the current frame
@@ -135,6 +132,7 @@ fn main() -> Result<(), Error> {
                 &mut renderer,
                 &mut pixels,
                 &mut multithreading,
+                &mut click_count,
             );
         }
 
@@ -143,6 +141,11 @@ fn main() -> Result<(), Error> {
         let time = app_start.elapsed();
         // Update internal stateand request a redraw
         world.update(frame_time_ms, time);
+        if let Some(pyramid) = world.objects.get_mut(0) {
+            let look_at = pyramid.pos + *pyramid.vertices.get(0).unwrap();
+            // println!("Looking at: {look_at:?}");
+            camera.look_at(look_at);
+        }
         window.request_redraw();
 
         print_frame_time(frame_time_ms);

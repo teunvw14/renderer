@@ -20,12 +20,34 @@ pub fn handle_input(
     // input_manager: &mut InputManager,
     control_flow: &mut ControlFlow,
     world: &mut World,
-    _camera: &mut Camera,
+    camera: &mut Camera,
     renderer: &mut Renderer,
     pixels: &mut Pixels,
     multithreading: &mut bool,
+    click_count: &mut u8,
 ) {
+
+
+    // Check if the left mouse button was pressed.
+    if input.mouse_pressed(0) {
+        *click_count += 1;
+        *click_count = *click_count % 3;
+        if let Some(ball) = world.balls.get(*click_count as usize) {
+            camera.look_at(ball.pos);
+            let c = *click_count + 1;
+            println!("Looking at ball: {c:?}");
+        }
+    }
+
+
     // input_manager.update(input);
+
+    if input.key_pressed(VirtualKeyCode::Minus) {
+        camera.set_field_of_view_deg(camera.field_of_view_deg() - 1.0);
+    }
+    if input.key_pressed(VirtualKeyCode::Equals) {
+        camera.set_field_of_view_deg(camera.field_of_view_deg() + 1.0);
+    }
 
     // Close events
     if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {

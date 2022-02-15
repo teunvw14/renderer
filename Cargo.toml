@@ -11,6 +11,7 @@ crossbeam = "0.8.1"
 num = "0.4.0"
 num_cpus = "1.13.1"
 pixels = "0.9.0"
+quick-error = "2.0.1"
 rayon = "1.5.1"
 rgb = { version = "0.8.31", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
