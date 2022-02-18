@@ -1,7 +1,14 @@
 use std::f32::consts::PI;
+use std::fs::File;
+use std::io::{BufReader, BufWriter, Read, Write};
+use std::path::Path;
 
-use crate::vector::{Vec3, vec3};
+use crate::errors::*;
+use crate::vector::{vec3, Vec3};
 use crate::world::World;
+
+use serde::de::DeserializeOwned;
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
 #[derive(Debug, Copy, Clone)]
 /// A resolution given by a width and a height.
@@ -12,34 +19,56 @@ pub struct Resolution {
 
 #[derive(Clone, Copy)]
 pub enum RealRange {
+    /// A range that allows all values.
     All,
-    Between(f32, f32),
+    /// A closed range that allows all values in \[a, b\], i.e. all x such that a <= x <= b.
+    Closed(f32, f32),
+    /// An open range that allows all values in (a, b), i.e. all x such that a < x < b.
+    Open(f32, f32),
+    /// A half-open range that allows all values in [a, b) i.e. all x such that a <= x < b.
+    HalfOpenR(f32, f32),
+    /// A half-open range that allows all values in (a, b] i.e. all x such that a < x <= b.
+    HalfOpenL(f32, f32),
+    /// A range that allows all values smaller than some a, i.e. all x such that x < a.
     SmallerThan(f32),
+    /// A range that allows all values smaller than or equal to some a, i.e. all x such that x <= a.
+    SmallerEqual(f32),
+    /// A range that allows all values larger than some a, i.e. all x such that x > a.
     LargerThan(f32),
+    /// A range that allows all values larger than or equal to some a, i.e. all x such that x >= a.
+    LargerEqual(f32),
 }
 
-pub fn in_real_range(range: RealRange, num: f32) -> bool {
-    match range {
-        RealRange::All => true,
-        RealRange::Between(a, b) => a < num && num < b,
-        RealRange::SmallerThan(a) => num < a,
-        RealRange::LargerThan(a) => num > a,
+impl RealRange {
+    pub fn contains(&self, x: f32) -> bool {
+        match self.to_owned() {
+            RealRange::All => true,
+            RealRange::Closed(a, b) => a <= x && x <= b,
+            RealRange::Open(a, b) => a < x && x < b,
+            RealRange::HalfOpenR(a, b) => a <= x && x < b,
+            RealRange::HalfOpenL(a, b) => a < x && x <= b,
+            RealRange::SmallerThan(a) => x < a,
+            RealRange::SmallerEqual(a) => x <= a,
+            RealRange::LargerThan(a) => x > a,
+            RealRange::LargerEqual(a) => x >= a,
+        }
     }
 }
 
-pub fn move_triangle(world: &mut World, by: Vec3) {
-    if let Some(triangle) = world.objects.get_mut(0) {
-        triangle.pos += by;
+pub fn move_pyramid(world: &mut World, by: Vec3) {
+    if let Some(pyramid) = world.vertex_objects.get_mut(1) {
+        pyramid.pos += by;
     }
 }
 
 pub fn print_frame_time(frame_time_ms: f32) {
-    if frame_time_ms > 0.05 {
+    if frame_time_ms > 0.0000000001 {
         print!(
             "\rLast frame took {:.1} MS | {:.1} FPS",
             frame_time_ms,
             1000.0 / frame_time_ms
         );
+        std::io::stdout().flush();
     }
 }
 
@@ -48,36 +77,21 @@ pub fn print_frame_time(frame_time_ms: f32) {
 /// positive x-axis.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SphericalCoordinates {
-    pub rad: f32, 
+    pub rad: f32,
     pub theta: f32,
     pub phi: f32,
 }
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum SphericalCreationError {
-        NegativeRadius {
-            display("Negative radius is invalid.")
-        }
-        ThetaOutOfBounds {
-            display("Theta out of legal range [0, PI]")
-        }
-        PhiOutOfBounds {
-            display("Phi out of legal range [0, 2*PI]")
-        }
-    }
-}
-
 impl SphericalCoordinates {
-    pub fn new(rad: f32, theta: f32, phi: f32) -> SphericalCoordinates{
-        SphericalCoordinates {
-            rad,
-            theta,
-            phi
-        }
+    pub fn new(rad: f32, theta: f32, phi: f32) -> SphericalCoordinates {
+        SphericalCoordinates { rad, theta, phi }
     }
 
-    pub fn new_strict(rad: f32, theta: f32, phi: f32) -> Result<SphericalCoordinates, SphericalCreationError> {
+    pub fn new_strict(
+        rad: f32,
+        theta: f32,
+        phi: f32,
+    ) -> Result<SphericalCoordinates, SphericalCreationError> {
         if rad < 0.0 {
             return Err(SphericalCreationError::NegativeRadius);
         }
@@ -93,18 +107,17 @@ impl SphericalCoordinates {
 
 impl From<Vec3> for SphericalCoordinates {
     fn from(cartesian: Vec3) -> Self {
-        let rad = (
-            cartesian.x * cartesian.x +
-            cartesian.y * cartesian.y + 
-            cartesian.z * cartesian.z
-        ).sqrt();
+        let rad =
+            (cartesian.x * cartesian.x + cartesian.y * cartesian.y + cartesian.z * cartesian.z)
+                .sqrt();
         let theta = (cartesian.z / rad).acos();
-        let phi = (cartesian.y).atan2(cartesian.x);
-        Self {
-            rad,
-            theta,
-            phi
+        let mut phi = (cartesian.y).atan2(cartesian.x);
+        // Translate [-PI, PI] to [0, 2*PI]
+        if phi < 0.0 {
+            phi = 2.0 * PI + phi;
         }
+        Self::new_strict(rad, theta, phi)
+            .expect("These values can only ever be out of bounds due to a programmer's error.")
     }
 }
 
@@ -112,9 +125,56 @@ impl From<Vec3> for SphericalCoordinates {
 fn test_vec_to_sphere_conversion() {
     let v = vec3(1.0, 1.0, 0.0);
     let s = SphericalCoordinates {
-        rad: (2f32).sqrt(), 
+        rad: (2f32).sqrt(),
         theta: PI / 2.0,
         phi: PI / 4.0,
     };
     assert_eq!(s, v.into());
+}
+
+/// Write an object into a json file using Serde serialization.
+pub fn save_object_as_file_json<O, P>(object: O, path: P) -> Result<(), Box<dyn std::error::Error>>
+where
+    P: AsRef<Path>,
+    O: Serialize,
+{
+    let file = File::create(path)?;
+    serde_json::to_writer(file, &object)?;
+    Ok(())
+}
+/// Create an object from a json file using Serde deserialization.
+pub fn load_object_from_file_json<O, P>(path: P) -> Result<O, Box<dyn std::error::Error>>
+where
+    P: AsRef<Path>,
+    O: DeserializeOwned,
+{
+    // Reading from a string slice is much faster than using reading from a
+    // File or BufReader using `serde_json::from_reader`
+    let mut s = String::new();
+    let mut file = File::open(path)?;
+    file.read_to_string(&mut s)?;
+    let result = serde_json::from_str(&s)?;
+    Ok(result)
+}
+/// Write an object into a binary file using bincode/Serde serialization.
+pub fn save_object_as_file_bin<O, P>(object: O, path: P) -> Result<(), Box<dyn std::error::Error>>
+where
+    P: AsRef<Path>,
+    O: Serialize,
+{
+    let file = File::create(path)?;
+    let mut buf_writer = BufWriter::new(file);
+    bincode::serialize_into(&mut buf_writer, &object)?;
+    Ok(())
+}
+/// Create an object from a binary file using bincode/Serde deserialization.
+pub fn load_object_from_file_bin<O, P>(path: P) -> Result<O, Box<dyn std::error::Error>>
+where
+    P: AsRef<Path>,
+    O: DeserializeOwned,
+{
+    let file = File::open(path)?;
+    let buf_reader = BufReader::new(file);
+    let result = bincode::deserialize_from(buf_reader)?;
+    Ok(result)
 }

@@ -6,11 +6,11 @@ use pixels::Pixels;
 
 use crate::camera::Camera;
 
+use crate::renderer::MultithreadingMethod;
 use crate::renderer::Renderer;
-use crate::util::move_triangle;
+use crate::util::move_pyramid;
 use crate::vector::*;
 use crate::world::World;
-use crate::renderer::MultithreadingMethod;
 
 const STEPSIZE: f32 = 0.2;
 
@@ -26,8 +26,6 @@ pub fn handle_input(
     multithreading: &mut bool,
     click_count: &mut u8,
 ) {
-
-
     // Check if the left mouse button was pressed.
     if input.mouse_pressed(0) {
         *click_count += 1;
@@ -39,14 +37,24 @@ pub fn handle_input(
         }
     }
 
-
-    // input_manager.update(input);
-
+    // Change the camera FOV:
     if input.key_pressed(VirtualKeyCode::Minus) {
-        camera.set_field_of_view_deg(camera.field_of_view_deg() - 1.0);
+        if camera.get_field_of_view_horizontal_deg() > 1.0 {
+            // Unwrap is safe because decreasing the FOV will only return an
+            // error if the value is smaller than, or equal to 0.
+            camera
+                .set_field_of_view_horizontal_deg(camera.get_field_of_view_horizontal_deg() - 1.0)
+                .unwrap();
+        }
     }
     if input.key_pressed(VirtualKeyCode::Equals) {
-        camera.set_field_of_view_deg(camera.field_of_view_deg() + 1.0);
+        if camera.get_field_of_view_horizontal_deg() < 179.0 {
+            // Unwrap is safe because increasing the FOV will only return an
+            // error if the value is greater than 180.
+            camera
+                .set_field_of_view_horizontal_deg(camera.get_field_of_view_horizontal_deg() + 1.0)
+                .unwrap();
+        }
     }
 
     // Close events
@@ -57,27 +65,27 @@ pub fn handle_input(
 
     // Move camera (for debug purposes).
     if input.key_pressed(VirtualKeyCode::Left) {
-        move_triangle(world, vec3(-STEPSIZE, 0.0, 0.0));
+        move_pyramid(world, vec3(-STEPSIZE, 0.0, 0.0));
         // camera.translate(vec3(-STEPSIZE, 0.0, 0.0));
     }
     if input.key_pressed(VirtualKeyCode::Right) {
-        move_triangle(world, vec3(STEPSIZE, 0.0, 0.0));
+        move_pyramid(world, vec3(STEPSIZE, 0.0, 0.0));
         // camera.translate(vec3(STEPSIZE, 0.0, 0.0));
     }
     if input.key_pressed(VirtualKeyCode::Down) {
-        move_triangle(world, vec3(0.0, -STEPSIZE, 0.0));
+        move_pyramid(world, vec3(0.0, -STEPSIZE, 0.0));
         // camera.translate(vec3(0.0, -STEPSIZE, 0.0));
     }
     if input.key_pressed(VirtualKeyCode::Up) {
-        move_triangle(world, vec3(0.0, STEPSIZE, 0.0));
+        move_pyramid(world, vec3(0.0, STEPSIZE, 0.0));
         // camera.translate(vec3(0.0, STEPSIZE, 0.0));
     }
     if input.key_pressed(VirtualKeyCode::End) {
-        move_triangle(world, vec3(0.0, 0.0, -STEPSIZE));
+        move_pyramid(world, vec3(0.0, 0.0, -STEPSIZE));
         // camera.translate(vec3(0.0, 0.0, -STEPSIZE));
     }
     if input.key_pressed(VirtualKeyCode::Home) {
-        move_triangle(world, vec3(0.0, 0.0, STEPSIZE));
+        move_pyramid(world, vec3(0.0, 0.0, STEPSIZE));
         // camera.translate(vec3(0.0, 0.0, STEPSIZE));
     }
 
@@ -90,7 +98,7 @@ pub fn handle_input(
             MultithreadingMethod::None => {
                 println!("Switching to crossbeam multithreading.");
                 MultithreadingMethod::Crossbeam
-            },
+            }
             MultithreadingMethod::Crossbeam => {
                 println!("Switching to rayon multithreading.");
                 MultithreadingMethod::Rayon

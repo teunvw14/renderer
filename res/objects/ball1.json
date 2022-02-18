@@ -1,1 +1,19 @@
-{"pos":{"x":0.75,"y":0.0,"z":-5.0},"rad":0.5,"material":{"ambient_constant":{"r":255,"g":0,"b":0,"a":255},"diffuse_constant":50.0,"specular_constant":20.0,"shine":7.0}}
+{
+    "pos": {
+        "x": 0.75,
+        "y": 1.0,
+        "z": -5.0
+    },
+    "rad": 0.5,
+    "material": {
+        "ambient_constant": {
+            "r": 255,
+            "g": 0,
+            "b": 0,
+            "a": 255
+        },
+        "diffuse_constant": 50.0,
+        "specular_constant": 20.0,
+        "shine": 7.0
+    }
+}

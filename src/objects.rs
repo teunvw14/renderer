@@ -1,11 +1,11 @@
 use crate::vector::Vec3;
 
-use std::io::{BufReader, Read, BufWriter};
+use std::fs::File;
+use std::io::{BufReader, BufWriter, Read};
 use std::ops::{Deref, DerefMut};
-use std::fs::{File};
 use std::path::Path;
-use serde::de::DeserializeOwned;
-use serde::{Serialize, Serializer, Deserialize, ser::SerializeStruct};
+
+use serde::{Deserialize, Serialize};
 
 use rgb::*;
 
@@ -46,7 +46,7 @@ pub struct Light {
     pub specular_intensity: LightIntensity,
 }
 
-pub type FaceIndices = (usize, usize, usize);
+pub type TriangleFaceIndices = (usize, usize, usize);
 pub type TriangleFace = (Vec3, Vec3, Vec3);
 
 pub fn get_triangle_normal(triangle_face: TriangleFace) -> Vec3 {
@@ -61,20 +61,23 @@ pub fn get_triangle_normal(triangle_face: TriangleFace) -> Vec3 {
 pub struct VertexObject {
     pub pos: Vec3,
     pub vertices: Vec<Vec3>,
-    pub faces: Vec<FaceIndices>,
+    pub faces: Vec<TriangleFaceIndices>,
     pub material: Material,
 }
 
 impl VertexObject {
+    /// Get an iterator over the object's faces. Vertices are given relative to
+    /// the object's position.
     pub fn iter_faces(&self) -> FacesIterator {
         FacesIterator::from_vertex_object(self)
     }
 }
 
+/// An iterator type used to iterate over the faces of a VertexObject.
 pub struct FacesIterator<'a> {
     index: usize,
     vertices: &'a Vec<Vec3>,
-    face_indices: &'a Vec<FaceIndices>,
+    face_indices: &'a Vec<TriangleFaceIndices>,
 }
 
 impl<'a> FacesIterator<'a> {
@@ -106,54 +109,16 @@ impl<'a> Iterator for FacesIterator<'a> {
 
 pub trait Object {
     fn pos(&self) -> Vec3;
+    fn set_pos(&mut self, pos: Vec3);
     fn material(&self) -> Material;
-    /// Write an object into a json file using Serde serialization.
-    fn into_file_json<P>(&self, path: P) -> Result<(), Box<dyn std::error::Error>> where 
-    P: AsRef<Path>,
-    Self: Serialize,
-    {
-        let file = File::create(path)?;
-        serde_json::to_writer(file, self)?;
-        Ok(())
-    }
-    /// Create an object from a json file using Serde deserialization.
-    fn from_file_json<P>(path: P) -> Result<Self, Box<dyn std::error::Error>> where 
-    P: AsRef<Path>,
-    Self: DeserializeOwned,
-    {
-        // Reading from a string slice is much faster than using reading from a
-        // File or BufReader using `serde_json::from_reader` 
-        let mut s = String::new();
-        let mut file = File::open(path)?;
-        file.read_to_string(&mut s)?;
-        let result = serde_json::from_str(&s)?;
-        Ok(result)
-    }
-    /// Write an object into a binary file using bincode/Serde serialization.
-    fn into_file_bin<P>(&self, path: P) -> Result<(), Box<dyn std::error::Error>> where 
-    P: AsRef<Path>,
-    Self: Serialize,
-    {
-        let file = File::create(path)?;
-        let mut buf_writer = BufWriter::new(file);
-        bincode::serialize_into(&mut buf_writer, self)?;
-        Ok(())
-    }
-    /// Create an object from a binary file using bincode/Serde deserialization.
-    fn from_file_bin<P>(path: P) -> Result<Self, Box<dyn std::error::Error>> where 
-    P: AsRef<Path>,
-    Self: DeserializeOwned,
-    {
-        let file = File::open(path)?;
-        let buf_reader = BufReader::new(file);
-        let result = bincode::deserialize_from(buf_reader)?;
-        Ok(result)
-    }
 }
 
 impl Object for VertexObject {
     fn pos(&self) -> Vec3 {
         self.pos
+    }
+    fn set_pos(&mut self, pos: Vec3) {
+        self.pos = pos;
     }
     fn material(&self) -> Material {
         self.material
@@ -163,6 +128,9 @@ impl Object for VertexObject {
 impl Object for Ball {
     fn pos(&self) -> Vec3 {
         self.pos
+    }
+    fn set_pos(&mut self, pos: Vec3) {
+        self.pos = pos;
     }
     fn material(&self) -> Material {
         self.material

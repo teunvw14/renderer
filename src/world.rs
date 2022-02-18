@@ -8,7 +8,7 @@ use crate::vector::vec3;
 use rgb::*;
 
 pub struct World {
-    pub objects: Vec<VertexObject>,
+    pub vertex_objects: Vec<VertexObject>,
     pub balls: Vec<Ball>,
     pub lights: Vec<Light>,
     pub color: RGBA8,
@@ -18,7 +18,7 @@ impl World {
     /// Create a new `World` instance that can draw a moving box.
     pub fn new() -> Self {
         Self {
-            objects: Vec::new(),
+            vertex_objects: Vec::new(),
             balls: Vec::new(),
             lights: Vec::new(),
             color: RGBA8::new(0, 0, 0, 255),
@@ -27,7 +27,7 @@ impl World {
 
     /// Update the `World` internal state; bounce the box around the screen.
     pub fn update(&mut self, _last_frame_time: f32, time: Duration) {
-        if let Some(pyramid) = self.objects.get_mut(0) {
+        if let Some(pyramid) = self.vertex_objects.get_mut(1) {
             if pyramid.vertices.len() > 3 {
                 let time_passed_s = time.as_millis() as f32 / 1000.0;
                 *pyramid.vertices.get_mut(2).unwrap() = vec3(

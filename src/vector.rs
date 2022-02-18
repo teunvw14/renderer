@@ -1,6 +1,9 @@
-use std::{ops::{Add, AddAssign, Mul, Sub}, f32::consts::PI};
+use std::{
+    f32::consts::PI,
+    ops::{Add, AddAssign, Mul, Sub},
+};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::util::SphericalCoordinates;
 
@@ -97,13 +100,49 @@ impl Vec3 {
             self.x * other.y - self.y * other.x,
         )
     }
+
+    pub fn distance_to(&self, other: Self) -> f32 {
+        let diff_vector = self.clone() - other;
+        diff_vector.len()
+    }
+
+    /// Set the length of a vector while keeping the direction.
+    pub fn set_length(&mut self, length: f32) {
+        self.normalize();
+        *self = *self * length;
+    }
+
+    /// Rotate around the x-axis, starting from the positive z-axis.
+    pub fn rotate_x_rad(&mut self, angle: f32) {
+        let current_angle = self.y.atan2(self.z);
+        let new_angle = current_angle + angle;
+        let len_yz = (self.y * self.y + self.z * self.z).sqrt();
+        self.z = new_angle.cos() * len_yz;
+        self.y = new_angle.sin() * len_yz;
+    }
+    /// Rotate around the y-axis, starting from the positive x-axis.
+    pub fn rotate_y_rad(&mut self, angle: f32) {
+        let current_angle = self.z.atan2(self.x);
+        let new_angle = current_angle + angle;
+        let len_xz = (self.x * self.x + self.z * self.z).sqrt();
+        self.x = new_angle.cos() * len_xz;
+        self.z = new_angle.sin() * len_xz;
+    }
+    /// Rotate around the z-axis, starting from the positive y-axis.
+    pub fn rotate_z_rad(&mut self, angle: f32) {
+        let current_angle = self.y.atan2(self.x);
+        let new_angle = current_angle + angle;
+        let len_xy = (self.x * self.x + self.y * self.y).sqrt();
+        self.x = new_angle.cos() * len_xy;
+        self.y = new_angle.sin() * len_xy;
+    }
 }
 
 #[test]
 fn test_sphere_to_vec_conversion() {
     let v = vec3(1.0, 1.0, 0.0);
     let s = SphericalCoordinates {
-        rad: (2f32).sqrt(), 
+        rad: (2f32).sqrt(),
         theta: PI / 2.0,
         phi: PI / 4.0,
     };
